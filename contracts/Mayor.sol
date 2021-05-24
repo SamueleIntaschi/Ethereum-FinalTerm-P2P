@@ -112,7 +112,7 @@ contract Mayor {
         voting_condition.envelopes_opened++;
         // Emit the event
         emit EnvelopeOpen(sender, received_souls, _doblon);
-        // Making this call here produce a further cost (for the mayor_or_sayonara() execution) for the last voting account
+        // Making the following call here produce a further cost (for the mayor_or_sayonara() execution) for the last voting account
         //if (voting_condition.envelopes_opened == voting_condition.envelopes_casted) mayor_or_sayonara();
 
     }

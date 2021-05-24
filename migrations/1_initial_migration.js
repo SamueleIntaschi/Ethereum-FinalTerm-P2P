@@ -1,4 +1,3 @@
-const Migrations = artifacts.require("Migrations");
 const Mayor = artifacts.require("Mayor");
 
 
