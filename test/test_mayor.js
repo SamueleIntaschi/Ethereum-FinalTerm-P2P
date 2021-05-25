@@ -4,7 +4,7 @@ contract("Testing MayorContract", accounts => {
     // Create a test
     it("Should test the application", async function() {
         
-        var quorum = 5;
+        var quorum = 2;
         var voters = new Array(quorum);
         var yaySoul = 0;
         var naySoul = 0;
@@ -26,7 +26,8 @@ contract("Testing MayorContract", accounts => {
             voters[i] = {
                 sigil: i,
                 doblon: doblon,
-                soul: Math.floor(Math.random() * (100 - 10) + 10),
+                // Generate a random number between 10 and 1000
+                soul: Math.floor(Math.random() * (1000 - 10) + 10),
                 balance: await web3.eth.getBalance(accounts[i]),
                 gasUsed: 0
             };

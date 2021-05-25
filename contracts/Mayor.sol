@@ -96,7 +96,7 @@ contract Mayor {
         bytes32 _sent_envelope = 0x0;
         uint received_souls = msg.value;
         address sender = msg.sender;
-        _sent_envelope = keccak256(abi.encode(_sigil, _doblon, received_souls));
+        _sent_envelope = compute_envelope(_sigil, _doblon, received_souls);
         require(_casted_envelope == _sent_envelope, "Sent envelope does not correspond to the one casted");
 
         // Add the sender of the transaction to the voters
@@ -121,31 +121,59 @@ contract Mayor {
     /// @notice Either confirm or kick out the candidate. Refund the electors who voted for the losing outcome
     function mayor_or_sayonara() canCheckOutcome public {
 
+        uint fund = 0;
+
         // Check if the candidate is elected or not
         if (yaySoul > naySoul) {
             // Transfer the yay souls collected to the candidate
-            candidate.transfer(yaySoul);
+            fund = yaySoul;
+            // Update balance before the transition to the candidate (for security reasons)
+            yaySoul = 0;
+            naySoul = 0;
+            //candidate.transfer(fund);
+            candidate.call{value: fund};
+            fund = 0;
             // Refund the losing voters
             for (uint i=0; i<voting_condition.quorum; i++) {
                 if (souls[voters[i]].doblon == false) {
-                    payable(voters[i]).transfer(souls[voters[i]].soul);
+                    // Update the balance to refund before the transition (for security reasons)
+                    fund = souls[voters[i]].soul;
+                    souls[voters[i]].soul = 0;
+                    //payable(voters[i]).transfer(fund);
+                    payable(voters[i]).call{value: fund};
+                    fund = 0;
                 }
             }
             // Emit the event
             emit NewMayor(candidate);
         }
+
         else {
             // Transfer the nay souls collected to the escrow
-            escrow.transfer(naySoul);
+            fund = naySoul;
+            // Update balance before transition to the escrow (for security reasons)
+            yaySoul = 0;
+            naySoul = 0;
+            //escrow.transfer(fund);
+            escrow.call{value: fund};
+            fund = 0;
             // Refund the losing voters
             for (uint i=0; i<voting_condition.quorum; i++) {
                 if (souls[voters[i]].doblon == true) {
-                    payable(voters[i]).transfer(souls[voters[i]].soul);
+                    // Update the balance to refund before the transition (for security reasons)
+                    fund = souls[voters[i]].soul;
+                    souls[voters[i]].soul = 0;
+                    //payable(voters[i]).transfer(fund);
+                    payable(voters[i]).call{value: fund};
+                    fund = 0;
                 }
             }
             // Emit the event
             emit Sayonara(escrow);
         }
+
+        // Destruct the contract (the escrow receives the eventually remaining fund)
+        selfdestruct(escrow);
 
     }
  
