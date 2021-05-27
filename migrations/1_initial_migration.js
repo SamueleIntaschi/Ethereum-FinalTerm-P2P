@@ -8,8 +8,9 @@ var doblon = true;
 var soul = 42;
 
 module.exports = async function (deployer, network, accounts) {
+    /*
     if(network == "development") {
-        /*Contract creation
+        //Contract creation
         const instance = await deployer.deploy(Mayor, candidate, escrow, quorum, {from: accounts[0]});
         const contractInstance = await Mayor.deployed();
         
@@ -21,6 +22,7 @@ module.exports = async function (deployer, network, accounts) {
             //Cast the computed envelope
             var cast_res = await contractInstance.cast_envelope(result, {from: accounts[i]});
         }
-        */
+        
     }
+    */
 };

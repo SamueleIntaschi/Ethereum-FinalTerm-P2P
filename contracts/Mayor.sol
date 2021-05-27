@@ -94,24 +94,20 @@ contract Mayor {
         // Recompute the hash to check if the two envelopes correspond
         bytes32 _casted_envelope = envelopes[msg.sender];
         bytes32 _sent_envelope = 0x0;
-        uint received_souls = msg.value;
-        address sender = msg.sender;
-        _sent_envelope = compute_envelope(_sigil, _doblon, received_souls);
+        _sent_envelope = compute_envelope(_sigil, _doblon, msg.value);
         require(_casted_envelope == _sent_envelope, "Sent envelope does not correspond to the one casted");
 
         // Add the sender of the transaction to the voters
-        voters.push(sender);
-        // Save the souls sent by the voter to eventually refund it if necessary
-        souls[sender].soul = received_souls;
-        // Save the vote to check if the voter is a loser or a winner
-        souls[sender].doblon = _doblon;
+        voters.push(msg.sender);
+        // Save the souls sent by the voter, to eventually refund it if necessary
+        souls[msg.sender] = Refund(msg.value, _doblon);
         // Add the souls to the respective fund
-        if (_doblon == true) yaySoul += received_souls;
-        else naySoul += received_souls;
+        if (_doblon == true) yaySoul += msg.value;
+        else naySoul += msg.value;
         // Increment the number of opened envelopes
         voting_condition.envelopes_opened++;
         // Emit the event
-        emit EnvelopeOpen(sender, received_souls, _doblon);
+        emit EnvelopeOpen(msg.sender, msg.value, _doblon);
         // Making the following call here produce a further cost (for the mayor_or_sayonara() execution) for the last voting account
         //if (voting_condition.envelopes_opened == voting_condition.envelopes_casted) mayor_or_sayonara();
 
@@ -122,6 +118,7 @@ contract Mayor {
     function mayor_or_sayonara() canCheckOutcome public {
 
         uint fund = 0;
+        bool success = false;
 
         // Check if the candidate is elected or not
         if (yaySoul > naySoul) {
@@ -131,7 +128,8 @@ contract Mayor {
             yaySoul = 0;
             naySoul = 0;
             //candidate.transfer(fund);
-            candidate.call{value: fund};
+            (success, ) = candidate.call{value: fund}("");
+            require(success, "Contract execution Failed");
             fund = 0;
             // Refund the losing voters
             for (uint i=0; i<voting_condition.quorum; i++) {
@@ -140,7 +138,8 @@ contract Mayor {
                     fund = souls[voters[i]].soul;
                     souls[voters[i]].soul = 0;
                     //payable(voters[i]).transfer(fund);
-                    payable(voters[i]).call{value: fund};
+                    (success, ) = payable(voters[i]).call{value: fund}("");
+                    require(success, "Contract execution Failed");
                     fund = 0;
                 }
             }
@@ -155,7 +154,8 @@ contract Mayor {
             yaySoul = 0;
             naySoul = 0;
             //escrow.transfer(fund);
-            escrow.call{value: fund};
+            (success, ) = escrow.call{value: fund}("");
+            require(success, "Contract execution Failed");
             fund = 0;
             // Refund the losing voters
             for (uint i=0; i<voting_condition.quorum; i++) {
@@ -163,8 +163,9 @@ contract Mayor {
                     // Update the balance to refund before the transition (for security reasons)
                     fund = souls[voters[i]].soul;
                     souls[voters[i]].soul = 0;
-                    //payable(voters[i]).transfer(fund);
-                    payable(voters[i]).call{value: fund};
+                    //bool success = payable(voters[i]).send(fund);
+                    (success, ) = payable(voters[i]).call{value: fund}("");
+                    require(success, "Contract execution Failed");
                     fund = 0;
                 }
             }
