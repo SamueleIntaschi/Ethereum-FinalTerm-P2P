@@ -91,6 +91,7 @@ contract Mayor {
     function open_envelope(uint _sigil, bool _doblon) canOpen public payable {
 
         require(envelopes[msg.sender] != 0x0, "The sender has not casted any votes");
+
         // Recompute the hash to check if the two envelopes correspond
         bytes32 _casted_envelope = envelopes[msg.sender];
         bytes32 _sent_envelope = 0x0;
@@ -99,16 +100,16 @@ contract Mayor {
 
         // Add the sender of the transaction to the voters
         voters.push(msg.sender);
-        // Save the souls sent by the voter, to eventually refund it if necessary
+        // Save the souls sent by the voter, to eventually refund him if necessary
         souls[msg.sender] = Refund(msg.value, _doblon);
         // Add the souls to the respective fund
         if (_doblon == true) yaySoul += msg.value;
         else naySoul += msg.value;
-        // Increment the number of opened envelopes
+        // Increase the number of open envelopes
         voting_condition.envelopes_opened++;
         // Emit the event
         emit EnvelopeOpen(msg.sender, msg.value, _doblon);
-        // Making the following call here produce a further cost (for the mayor_or_sayonara() execution) for the last voting account
+        // Making the following call here produce an additional cost (for the mayor_or_sayonara() execution) for the last voting account
         //if (voting_condition.envelopes_opened == voting_condition.envelopes_casted) mayor_or_sayonara();
 
     }
@@ -120,55 +121,59 @@ contract Mayor {
         uint fund = 0;
         bool success = false;
 
-        // Check if the candidate is elected or not
+        // Check if the candidate for mayor is confirmed or not
         if (yaySoul > naySoul) {
-            // Transfer the yay souls collected to the candidate
+            // Candidate confirmed: transfer the yay souls collected to the candidate
             fund = yaySoul;
-            // Update balance before the transition to the candidate (for security reasons)
+            // Update the balance before the transition to the candidate (to avoid re-entrancy problems)
             yaySoul = 0;
             naySoul = 0;
-            //candidate.transfer(fund);
+            // Send the souls
             (success, ) = candidate.call{value: fund}("");
             require(success, "Contract execution Failed");
             fund = 0;
+
             // Refund the losing voters
             for (uint i=0; i<voting_condition.quorum; i++) {
                 if (souls[voters[i]].doblon == false) {
-                    // Update the balance to refund before the transition (for security reasons)
+                    // Update the balance to refund before the transition (to avoid re-entrancy problems)
                     fund = souls[voters[i]].soul;
                     souls[voters[i]].soul = 0;
-                    //payable(voters[i]).transfer(fund);
+                    // Send the souls back to the losing voter
                     (success, ) = payable(voters[i]).call{value: fund}("");
                     require(success, "Contract execution Failed");
                     fund = 0;
                 }
             }
+
             // Emit the event
             emit NewMayor(candidate);
         }
 
         else {
-            // Transfer the nay souls collected to the escrow
+            // Candidate rejected: transfer the nay souls collected to the escrow
             fund = naySoul;
-            // Update balance before transition to the escrow (for security reasons)
+            // Update balance before the transaction to the escrow (to avoid re-entrancy problems)
             yaySoul = 0;
             naySoul = 0;
-            //escrow.transfer(fund);
+            // Send the souls to the escrow
             (success, ) = escrow.call{value: fund}("");
             require(success, "Contract execution Failed");
             fund = 0;
+
             // Refund the losing voters
             for (uint i=0; i<voting_condition.quorum; i++) {
                 if (souls[voters[i]].doblon == true) {
-                    // Update the balance to refund before the transition (for security reasons)
+                    // Update the balance to refund before the transition (to avoid re-entrancy problems)
                     fund = souls[voters[i]].soul;
                     souls[voters[i]].soul = 0;
-                    //bool success = payable(voters[i]).send(fund);
+                    // Send the souls back to the losing voter
                     (success, ) = payable(voters[i]).call{value: fund}("");
                     require(success, "Contract execution Failed");
                     fund = 0;
                 }
             }
+            
             // Emit the event
             emit Sayonara(escrow);
         }

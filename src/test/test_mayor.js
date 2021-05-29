@@ -1,21 +1,27 @@
 const MayorContract = artifacts.require("Mayor"); // ./build/Mayor.json
 
 contract("Testing MayorContract", accounts => {
-    // Test the behavior of the contract
+
+    // Test the general behavior of the contract
     it("Should test the contract behavior", async function() {
         
+        // Quorum
         var quorum = 8;
+        // Number of true and false votes
         var trueVotes = 4;
         var falseVotes = quorum - trueVotes;
+        // Voters array
         var voters = new Array(quorum);
+        // Souls counter
         var yaySoul = 0;
         var naySoul = 0;
         var win = false;
-        // Fixed random addresses for candidate and escrow
+        // Fixed addresses for candidate for mayor and escrow
         var candidate = "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7";
         var escrow = "0x0472ec0185ebb8202f3d4ddb0226998889663cf2";
+        // Variable to count the gas consumption
         var gas = 0;
-        // Create the contract from an impartial account
+        // Contract creation from a neutral account
         gas = await MayorContract.new.estimateGas(candidate, escrow, quorum, {from: accounts[quorum]});
         console.log("Gas used for contract creation: " + gas);
         const instance = await MayorContract.new(candidate, escrow, quorum, {from: accounts[quorum]});
@@ -83,20 +89,22 @@ contract("Testing MayorContract", accounts => {
             assert.equal(final_res.logs[0].event, "Sayonara", "Mayor selection should be correct");
         }
 
-        // Check the balance of the accounts
+        // Check the balances of the accounts
         const candidateBalance = await web3.eth.getBalance(candidate);
         const escrowBalance = await web3.eth.getBalance(escrow);
         if (win) {
+            // Mayor confirmed
             assert.equal(candidateBalance, yaySoul, "Candidate balance should be correct");
             assert.equal(escrowBalance, 0, "Escrow balance should be correct");
         }
         else {
+            // Sayonara my mayor
             assert.equal(candidateBalance, 0, "Candidate balance should be correct");
             assert.equal(escrowBalance, naySoul, "Escrow balance should be correct");
         }
+        // Check that the losing voters have been refunded
         for (var i=0; i<quorum; i++) {
             if ((win && voters[i].doblon == false) || (!win && voters[i].doblon == true)) {
-                // Compute an approximation of the balance
                 var expectedBalance = voters[i].balance - voters[i].ethUsed;
                 var actualBalance = await web3.eth.getBalance(accounts[i]);
                 assert.equal(actualBalance, expectedBalance,"Souls should be correctly refunded");
@@ -104,18 +112,20 @@ contract("Testing MayorContract", accounts => {
         }
     });
     
-    it("Should test mayor_or_sayonara gas cost with a high number of losing voters", async function() {
+    // Calculate the gas consumption of mayor_or_sayonara with a high number of losing voters
+    it("Should test mayor_or_sayonara with a high number of losing voters", async function() {
         var quorum = 9;
         var trueVotes = 1;
-        // Set a high number of soul to sent to win the election
+        // Set a high number of souls to be sent to win the election for the only winning voter
         var trueSoul = 100000000;
         var falseVotes = quorum - trueVotes;
+        // Voters array
         var voters = new Array(quorum);
-        // Fixed random addresses for candidate and escrow
+        // Fixed addresses for candidate and escrow
         var candidate = "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7";
         var escrow = "0x0472ec0185ebb8202f3d4ddb0226998889663cf2";
         var gas = 0;
-        // Create the contract from an impartial account
+        // Create the contract from a neutral account
         const instance = await MayorContract.new(candidate, escrow, quorum, {from: accounts[quorum]});
         // Send envelopes until the quorum is reached
         for (var i=0; i<quorum; i++) {
@@ -151,24 +161,25 @@ contract("Testing MayorContract", accounts => {
             assert.equal(open_res.logs[0].event, "EnvelopeOpen", "Envelopes should be opened");
         }
 
-        //Check the final result: new mayor elected or sayonara my mayor
+        //Check the final result: the candidate should be elected
         gas = await instance.mayor_or_sayonara.estimateGas();
         console.log("Gas used to decide the results of the election with a high number of losing voters: " + gas);
         const final_res = await instance.mayor_or_sayonara({from: accounts[quorum]});
         assert.equal(final_res.logs[0].event, "NewMayor", "Mayor selection should be correct");
     });
 
+    // Calculate the gas consumption of mayor_or_sayonara with a low number of losing voters
     it("Should test mayor_or_sayonara with a low number of losing voters", async function() {
         var quorum = 9;
+        // There is only one losing voter
         var trueVotes = 8;
-        // Set a high number of soul to sent to win the election
         var falseVotes = quorum - trueVotes;
         var voters = new Array(quorum);
-        // Fixed random addresses for candidate and escrow
+        // Fixed ddresses for candidate and escrow
         var candidate = "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7";
         var escrow = "0x0472ec0185ebb8202f3d4ddb0226998889663cf2";
         var gas = 0;
-        // Create the contract from an impartial account
+        // Create the contract from a neutral account
         const instance = await MayorContract.new(candidate, escrow, quorum, {from: accounts[quorum]});
         // Send envelopes until the quorum is reached
         for (var i=0; i<quorum; i++) {
@@ -202,24 +213,26 @@ contract("Testing MayorContract", accounts => {
             assert.equal(open_res.logs[0].event, "EnvelopeOpen", "Envelopes should be opened");
         }
 
-        //Check the final result: new mayor elected or sayonara my mayor
+        //Check the final result: the candidate should be confirmed
         gas = await instance.mayor_or_sayonara.estimateGas();
         console.log("Gas used to decide the results of the election with a low number of losing voters: " + gas);
         const final_res = await instance.mayor_or_sayonara({from: accounts[quorum]});
         assert.equal(final_res.logs[0].event, "NewMayor", "Mayor selection should be correct");
     });
 
-    it("Should test mayor_or_sayonara with a low quorum", async function() {
+    // Calculate the gas consumption of mayor_or_sayonara with a small quorum
+    it("Should test mayor_or_sayonara with a small quorum", async function() {
+        // Quorum of only 2, 1 true vote and 1 false vote
         var quorum = 2;
         var trueVotes = 1;
-        // Set a high number of soul to sent to win the election
         var falseVotes = quorum - trueVotes;
+        // Voters array
         var voters = new Array(quorum);
-        // Fixed random addresses for candidate and escrow
+        // Fixed addresses for candidate and escrow
         var candidate = "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7";
         var escrow = "0x0472ec0185ebb8202f3d4ddb0226998889663cf2";
         var gas = 0;
-        // Create the contract from an impartial account
+        // Create the contract from a neutral account
         const instance = await MayorContract.new(candidate, escrow, quorum, {from: accounts[quorum]});
         // Send envelopes until the quorum is reached
         for (var i=0; i<quorum; i++) {
